@@ -1,0 +1,6 @@
+cuda/build/
+cuda/dist
+.vscode/
+.idea
+cuda/lib
+cuda/parallel_matmul_cuda.egg*

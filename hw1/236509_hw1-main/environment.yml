@@ -1,0 +1,16 @@
+name: cuda_env
+channels:
+  - nvidia/label/cuda-11.8.0
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - cudatoolkit
+  - pytorch
+  - torchaudio
+  - torchvision
+  - python
+  - cuda
+  - matplotlib
+  - numpy  
+
