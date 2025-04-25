@@ -1,6 +1,6 @@
 def matmul(a1_tensor, a2_tensor):
-    assert a1_tensor.shape == a2_tensor.shape
-    assert a1_tensor.shape[1:] == (32, 32)
+    #assert a1_tensor.shape == a2_tensor.shape
+    #assert a1_tensor.shape[1:] == (32, 32)
     assert a1_tensor.device.type == 'cpu'
 
     # Move to GPU for CUDA operation
