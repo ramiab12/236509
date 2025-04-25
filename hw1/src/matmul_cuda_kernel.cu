@@ -1,42 +1,59 @@
+#include <cuda.h>
 #include <cuda_runtime.h>
-#include <torch/extension.h>
 
-// CUDA kernel for matrix multiplication (32x32 matrices)
-__global__ void matmul_cuda_kernel(
-    const float* A, const float* B, float* C,
-    int M, int N, int K) {
-    // Calculate row and column indices for the current thread
+// Naive kernel
+__global__ void matmul_naive_kernel(
+    const float* a1, const float* a2, float* out, int n, int N
+) {
+    int batch = blockIdx.x;
     int row = threadIdx.y;
     int col = threadIdx.x;
+    int offset = batch * n * n;
 
-    // Perform the dot product for the row and column
-    float value = 0.0f;
-    for (int k = 0; k < K; ++k) {
-        value += A[row * K + k] * B[k * N + col];
+    float sum = 0.0f;
+    for (int k = 0; k < n; k++) {
+        sum += a1[offset + row * n + k] * a2[offset + k * n + col];
     }
-    C[row * N + col] = value;
+    out[offset + row * n + col] = sum;
 }
 
-// Host function to launch the kernel
-void matmul_cuda(
-    at::Tensor A, at::Tensor B, at::Tensor C,
-    int M, int N, int K) {
-    // Ensure tensors are on the GPU and contiguous
-    TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
-    TORCH_CHECK(B.is_cuda(), "B must be a CUDA tensor");
-    TORCH_CHECK(C.is_cuda(), "C must be a CUDA tensor");
-    TORCH_CHECK(A.is_contiguous(), "A must be contiguous");
-    TORCH_CHECK(B.is_contiguous(), "B must be contiguous");
-    TORCH_CHECK(C.is_contiguous(), "C must be contiguous");
+// Optimized kernel (shared memory + transposed access)
+__global__ void matmul_optimized_kernel(
+    const float* a1, const float* a2, float* out, int n, int N
+) {
+    int batch = blockIdx.x;
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+    int offset = batch * n * n;
 
-    // Define block and grid dimensions for 32x32 matrix
-    dim3 blockDim(32, 32);  // 32x32 threads per block (one thread per element)
-    dim3 gridDim(1, 1);     // Single block for the entire matrix
+    extern __shared__ float shared_mem[];
+    float* a1_shared = shared_mem;
+    float* a2_shared = shared_mem + n * n;
 
-    // Launch the kernel
-    matmul_cuda_kernel<<<gridDim, blockDim>>>(
-        A.data_ptr<float>(), B.data_ptr<float>(), C.data_ptr<float>(), M, N, K);
+    // Load matrices into shared memory (a2 is transposed)
+    a1_shared[row * n + col] = a1[offset + row * n + col];
+    a2_shared[col * n + row] = a2[offset + row * n + col];  // Transpose during load
+    __syncthreads();
 
-    // Synchronize the device
-    cudaDeviceSynchronize();
+    // Compute dot product
+    float sum = 0.0f;
+    #pragma unroll
+    for (int k = 0; k < n; k++) {
+        sum += a1_shared[row * n + k] * a2_shared[col * n + k];
+    }
+    out[offset + row * n + col] = sum;
+}
+
+// Kernel dispatcher
+void launch_matmul_kernel(
+    const float* a1, const float* a2, float* out, int n, int N, bool use_optimized
+) {
+    dim3 grid(N);  // One block per batch
+    dim3 block(n, n);  // One thread per matrix element
+    if (use_optimized) {
+        size_t shared_size = 2 * n * n * sizeof(float);
+        matmul_optimized_kernel<<<grid, block, shared_size>>>(a1, a2, out, n, N);
+    } else {
+        matmul_naive_kernel<<<grid, block>>>(a1, a2, out, n, N);
+    }
 }
