@@ -146,8 +146,6 @@ def run(args):
                 A2_input = A2_lst
             
             print("Running matmul cuda implementation")
-            # -----my add-----
-            print("type(a1_list):", type(A1_input))
 
             start_event = torch.cuda.Event(enable_timing=True)
             end_event = torch.cuda.Event(enable_timing=True)

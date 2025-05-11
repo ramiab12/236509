@@ -1,74 +1,56 @@
-#include <torch/extension.h>
 #include <cuda_runtime.h>
-#include <vector>
+#include <cstdio>
 
-#define BLOCK_SIZE 16
-#define N 32
-
-__global__ void inerProd(float *A, float *B, float *C, int size){
-
-    __shared__ float A_sub[BLOCK_SIZE][BLOCK_SIZE];
-    __shared__ float B_sub[BLOCK_SIZE][BLOCK_SIZE];
-
-    // Calculate row and column indices for the thread
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+#define MATRIX_SIZE 32
+#define MATRIX_AREA (MATRIX_SIZE * MATRIX_SIZE)
+#define CYCLE_SIZE 4
 
 
+__global__ void matMul32x32(float* A, float* B, float* C) {
     int tx = threadIdx.x;
     int ty = threadIdx.y;
-    int bpg = gridDim.x;
 
+    int cycle_idx = blockIdx.x;
+    int base_idx = cycle_idx * CYCLE_SIZE;
 
-    // Declare a variable to accumulate the sum
-    float sum = 0;
+    //shared memory for all 4 matrix
+    __shared__ float sA[CYCLE_SIZE][MATRIX_SIZE][MATRIX_SIZE];
+    __shared__ float sB[CYCLE_SIZE][MATRIX_SIZE][MATRIX_SIZE];
 
-    // Check if the thread's indices are within the matrix dimensions
-    if(row < size && col < size) {
-
-        for(int i = 0; i < bpg; ++i) {
-            // Load submatrices into shared memory
-            A_sub[tx][ty] = A[row + (i * BLOCK_SIZE + tx)];
-            B_sub[tx][ty] = B[(i * BLOCK_SIZE + ty) * N + col];
-            __syncthreads();
-            for(int k = 0; k < BLOCK_SIZE; ++k) {
-                sum += A_sub[tx][k] * B_sub[ty][k];
-            }
-            __syncthreads();
+    // Prefetch: loading 4 matrix to shared memory
+    #pragma unroll
+    for (int i = 0; i < CYCLE_SIZE; ++i) {
+        int batch_idx = base_idx + i;
+        if (batch_idx < gridDim.x * CYCLE_SIZE) {
+            const float* Aptr = A + batch_idx * MATRIX_AREA;
+            const float* Bptr = B + batch_idx * MATRIX_AREA;
+            sA[i][ty][tx] = Aptr[ty * MATRIX_SIZE + tx];
+            sB[i][ty][tx] = Bptr[ty * MATRIX_SIZE + tx];
         }
-        // Store the sum in the corresponding element of matrix C
-        C[row * size + col] = sum;
+    }
+
+    __syncthreads();
+
+    //calculate result
+    #pragma unroll
+    for (int i = 0; i < CYCLE_SIZE; ++i) {
+        int batch_idx = base_idx + i;
+        if (batch_idx < gridDim.x * CYCLE_SIZE) {
+            float sum = 0.0f;
+            #pragma unroll
+            for (int k = 0; k < MATRIX_SIZE; ++k) {
+                sum += sA[i][ty][k] * sB[i][k][tx];
+            }
+            float* Cptr = C + batch_idx * MATRIX_AREA;
+            Cptr[ty * MATRIX_SIZE + tx] = sum;
+        }
     }
 }
 
 
-void matmul_cuda(float *A, float *B, float *C){
+void matmul_cuda(float* A, float* B, float* C, int batch_size) {
+    dim3 threads(MATRIX_SIZE, MATRIX_SIZE);  // 1024 threads
+    int grid_size = (batch_size + CYCLE_SIZE - 1) / CYCLE_SIZE;
 
-    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 numBlocks((N + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                   (N + BLOCK_SIZE - 1) / BLOCK_SIZE);
-
-    float *d_A,* d_B, *d_C;
-    cudaMalloc(&d_A, N * N * sizeof(float));
-    cudaMalloc(&d_B, N * N * sizeof(float));
-    cudaMalloc(&d_C, N * N * sizeof(float));
-
-
-    cudaMemcpy(d_A, A, N * N * sizeof(float),cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, B, N * N * sizeof(float),cudaMemcpyHostToDevice);
-
-    // Launch the kernel
-    inerProd<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, N);
-
-    // Wait for GPU to finish
-    cudaDeviceSynchronize();
-
-    cudaMemcpy(C, d_C, N * N * sizeof(float),cudaMemcpyDeviceToHost);
-
-    // Free allocated memory
-    cudaFree(d_A);
-    cudaFree(d_B);
-    cudaFree(d_C);
-
-    //return 0;
+    matMul32x32<<<grid_size, threads>>>(A, B, C);
 }
