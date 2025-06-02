@@ -1,0 +1,3 @@
+# ninja log v5
+1	1368	1748893534198805000	/home/ramiab/236509/hw2/src_0_point_17/build/temp.linux-x86_64-cpython-310/matmul_cuda_kernel.o	2e23f87eefaff601
+1	24141	1748893556959973000	/home/ramiab/236509/hw2/src_0_point_17/build/temp.linux-x86_64-cpython-310/matmul_cuda.o	39dfd8a69c686ad0
