@@ -1,15 +1,13 @@
 // matmul_cuda_kernel.cu
 #include <cuda_runtime.h>
-#include <cuda_fp16.h>    // for __half, __float2half
-#include <mma.h>          // for nvcuda::wmma
-
+#include <cuda_fp16.h>   
+#include <mma.h>         
 using namespace nvcuda::wmma;
-
 static constexpr int MATRIX_SIZE = 32;  // dimension of each matrix
 static constexpr int TILE        = 16;  // Tensor‐Core tile is 16×16
 static constexpr int WARPSIZE    = 32;  // number of threads in one warp
 
-// Shared‐memory scratchpad: 16×16 floats per block
+
 __shared__ float Ctemp_shared[TILE * TILE];
 
 extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
@@ -38,13 +36,6 @@ extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
     // 1) Create and zero‐initialize a 16×16 FP32 accumulator fragment
     fragment<accumulator, TILE, TILE, TILE, float> acc_frag;
     fill_fragment(acc_frag, 0.0f);
-
-    // ----------------------------------------------------------------------------
-    // 2) First half of K: multiply
-    //    A[ sub_i*16 .. sub_i*16+15,       0 .. 15 ]
-    //    B[       0 .. 15,             sub_j*16 .. sub_j*16+15 ]
-    //    Both are loaded row_major because our data is row-major.
-    // ----------------------------------------------------------------------------
     {
         // a_frag holds the A‐tile; b_frag holds the B‐tile
         fragment<matrix_a, TILE, TILE, TILE, __half, row_major> a_frag;
@@ -63,11 +54,7 @@ extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
         mma_sync(acc_frag, a_frag, b_frag, acc_frag);
     }
 
-    // ----------------------------------------------------------------------------
-    // 3) Second half of K: multiply
-    //    A[ sub_i*16 .. sub_i*16+15,      16 .. 31 ]
-    //    B[      16 .. 31,            sub_j*16 .. sub_j*16+15 ]
-    // ----------------------------------------------------------------------------
+    
     {
         fragment<matrix_a, TILE, TILE, TILE, __half, row_major> a_frag;
         fragment<matrix_b, TILE, TILE, TILE, __half, row_major> b_frag;
@@ -83,10 +70,7 @@ extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
         mma_sync(acc_frag, a_frag, b_frag, acc_frag);
     }
 
-    // ----------------------------------------------------------------------------
-    // 4) Store the 16×16 FP32 accumulator into shared memory (Ctemp_shared).
-    //    All 32 threads in this warp must call the store.
-    // ----------------------------------------------------------------------------
+    
     store_matrix_sync(
         Ctemp_shared,    // destination in shared memory
         acc_frag,        // FP32 accumulator fragment
@@ -94,13 +78,10 @@ extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
         mem_row_major    // row‐major order
     );
 
-    // Make sure all 32 threads have finished writing to shared memory
+    
     __syncthreads();
 
-    // ----------------------------------------------------------------------------
-    // 5) Scatter from Ctemp_shared (FP32) → global C (FP16)
-    //    Each of the 32 threads writes 8 consecutive elements:
-    // ----------------------------------------------------------------------------
+    
     {
         // Each thread in [0..31] handles 8 elements
         for (int e = 0; e < 8; ++e) {
@@ -118,22 +99,18 @@ extern "C" __global__ void matmul_kernel_32x32_wmma_fp16_fp32(
         }
     }
 
-    // Wait for all 32 threads to finish scattering before ending
+    
     __syncthreads();
 }
 
-// ------------------------------------------------------------
-// Host wrapper (UNCHANGED from before)
-// ------------------------------------------------------------
+
 void matmul_cuda(
     const __half* A,
     const __half* B,
     __half*       C,
     int           batch_size)
 {
-    // **4 blocks per matrix**; each block has exactly 32 threads (one warp).
-    // blockIdx.x runs from 0 .. (4*batch_size − 1).
-    // threadIdx.x runs from 0 .. 31.
+    
     dim3 blockDim(WARPSIZE, 1, 1);
     dim3 gridDim(batch_size * 4, 1, 1);
     matmul_kernel_32x32_wmma_fp16_fp32<<<gridDim, blockDim>>>(A, B, C);
