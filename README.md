@@ -2,7 +2,7 @@
 
 This repository contains implementations of high-performance GPU-accelerated matrix multiplication kernels developed as part of coursework in advanced hardware acceleration for deep learning at Technion - Israel Institute of Technology.
 
-**Contributors:** Bashar Abu Leil, Rami Abu-Mukh, Tom Ostfeld
+**Contributors:** Rami Abu-Mukh, Bashar Abu Leil
 
 ---
 
