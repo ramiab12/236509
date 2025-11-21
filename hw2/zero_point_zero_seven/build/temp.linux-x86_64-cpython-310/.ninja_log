@@ -1,5 +1,0 @@
-# ninja log v5
-1	25227	1748870974517514000	/home/ramiab/hw2_bool/src/zero_point_zero_seven/build/temp.linux-x86_64-cpython-310/matmul_cuda.o	c69de82aa10c720e
-695	2069	1748871938061046000	/home/ramiab/hw2_bool/src/zero_point_zero_seven/build/temp.linux-x86_64-cpython-310/matmul_cuda_kernel.o	4bccd94a071ab524
-727	2177	1748872470850726000	/home/ramiab/hw2_bool/src/zero_point_zero_seven/build/temp.linux-x86_64-cpython-310/matmul_cuda_kernel.o	4bccd94a071ab524
-726	24960	1748872493618240000	/home/ramiab/hw2_bool/src/zero_point_zero_seven/build/temp.linux-x86_64-cpython-310/matmul_cuda.o	c69de82aa10c720e
