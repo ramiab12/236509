@@ -6,7 +6,7 @@ This repository contains implementations of high-performance GPU-accelerated mat
 
 ---
 
-## 📚 Overview
+## Overview
 
 This project explores various optimization techniques for batched matrix multiplication on NVIDIA GPUs, focusing on 32×32 matrices with large batch sizes (10,000 matrices). The implementations progress from basic shared memory optimizations to advanced techniques using Tensor Cores and specialized data types.
 
@@ -16,7 +16,7 @@ The assignments demonstrate a systematic approach to GPU optimization, achieving
 
 ---
 
-## 🎯 Learning Objectives
+##  Learning Objectives
 
 - **Memory Hierarchy Optimization**: Understanding and leveraging GPU memory hierarchy (global, shared, registers)
 - **Parallel Computing Patterns**: Implementing tiling, warp-level operations, and synchronization
@@ -26,7 +26,7 @@ The assignments demonstrate a systematic approach to GPU optimization, achieving
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```
 236509/
@@ -52,7 +52,7 @@ The assignments demonstrate a systematic approach to GPU optimization, achieving
 
 ---
 
-## 🚀 Homework 1: High-Performance FP32 Batched Matrix Multiplication
+##  Homework 1: High-Performance FP32 Batched Matrix Multiplication
 
 ### Overview
 Implementation of optimized batched matrix multiplication for FP32 (float32) data using shared memory tiling and quadruple buffering.
@@ -169,7 +169,7 @@ Advanced implementations supporting Boolean and FP16 (half-precision) matrix mul
 
 ---
 
-## 📊 Detailed Implementation Analysis
+##  Detailed Implementation Analysis
 
 ### 2.1 Boolean Matrix Multiplication Evolution
 
@@ -344,7 +344,7 @@ fragment<matrix_a, 16, 16, 16, __half, row_major> a_frag;
 fragment<matrix_b, 16, 16, 16, __half, row_major> b_frag;
 load_matrix_sync(a_frag, A_ptr, 32);  // Load 16×16 from A
 load_matrix_sync(b_frag, B_ptr, 32);  // Load 16×16 from B
-mma_sync(acc_frag, a_frag, b_frag, acc_frag);  // ✨ Tensor Core magic!
+mma_sync(acc_frag, a_frag, b_frag, acc_frag);  //  Tensor Core magic!
 
 // Phase 2: K = 16..31 (accumulate into same acc_frag)
 load_matrix_sync(a_frag, A_ptr + 16, 32);
@@ -399,7 +399,7 @@ static torch::Tensor C = torch::empty_like(A);  // Allocate once
 
 ---
 
-## 🏆 Final Performance Comparison
+##  Final Performance Comparison
 
 ### All Implementations Summary
 
@@ -473,7 +473,7 @@ nvidia-smi --query-gpu=compute_cap --format=csv
 
 ---
 
-## 📊 Performance Benchmarking
+##  Performance Benchmarking
 
 The benchmark script (`benchmark.py`) provides comprehensive performance and accuracy metrics:
 
@@ -535,7 +535,7 @@ overall mean L2 error:  4.2e-5
 
 ---
 
-## 🔍 Key CUDA Concepts Demonstrated
+##  Key CUDA Concepts Demonstrated
 
 ### Memory Hierarchy
 - **Global Memory**: High latency (~400 cycles), high bandwidth (~750 GB/s on RTX 2080 Ti)
@@ -656,7 +656,7 @@ uint32_t all_values = __ballot_sync(0xFFFFFFFF, my_value);
 
 ---
 
-## 🎓 Course Context
+##  Course Context
 
 **Course:** 236509 - Advanced Topics in Hardware Accelerators for Deep Learning  
 **Institution:** Technion - Israel Institute of Technology
@@ -687,59 +687,7 @@ This project explores practical GPU programming and optimization techniques esse
 
 ---
 
-## 📖 Additional Resources
 
-### CUDA Programming
-- [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
-- [CUDA Best Practices Guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/)
-- [CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/)
-
-### Tensor Cores & WMMA
-- [WMMA API Documentation](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#wmma)
-- [Using Tensor Cores in CUDA](https://developer.nvidia.com/blog/programming-tensor-cores-cuda-9/)
-- [Mixed Precision Training](https://arxiv.org/abs/1710.03740)
-
-### PyTorch Extensions
-- [PyTorch C++ Extension Tutorial](https://pytorch.org/tutorials/advanced/cpp_extension.html)
-- [Custom CUDA Operations](https://pytorch.org/tutorials/advanced/cpp_extension.html#custom-cuda-kernel)
-
-### GPU Architecture
-- [Inside Volta Architecture](https://developer.nvidia.com/blog/inside-volta/)
-- [Turing Architecture Whitepaper](https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf)
-
----
-
-## 🤝 Contributors
-
-- **Rami Abu-Mukh** (324276765) - [@ramiab12](https://github.com/ramiab12)  
-- **Bashar Abu Leil** (212192181) - [@BasharAbuLeil](https://github.com/BasharAbuLeil)
-
-
-*Technion - Israel Institute of Technology*
-
----
-
-## 📝 License
-
-This project is part of academic coursework. Please refer to your institution's academic integrity policies before using or referencing this code.
-
----
-
-## 🔮 Future Enhancements
-
-Potential areas for further optimization:
-- [ ] **Async memory transfers**: Overlap H2D/D2H transfers with computation using streams
-- [ ] **Support for arbitrary matrix sizes**: Generalize beyond 32×32 with dynamic tiling
-- [ ] **INT8 quantization**: Explore integer matrix multiplication with calibration
-- [ ] **Multi-GPU distribution**: Shard batch across GPUs with NCCL
-- [ ] **Persistent kernels**: Keep kernels resident on GPU for lower latency
-- [ ] **Quantization-aware training integration**: Build QAT pipeline using these kernels
-- [ ] **FP8 Tensor Core support**: Leverage newest Hopper architecture features
-- [ ] **Autotuning framework**: Automatically find optimal tile sizes per GPU
-- [ ] **Sparse matrix support**: Exploit sparsity with CUTLASS or cuSPARSE
-- [ ] **Power profiling**: Measure energy efficiency (GFLOPS/Watt)
-
----
 
 **Note**: Performance numbers are specific to NVIDIA RTX 2080 Ti (Compute Capability 7.5). Results will vary on different GPU architectures. For detailed performance analysis, experimental methodology, and in-depth results, please refer to the `report.pdf` files in each homework directory.
 
